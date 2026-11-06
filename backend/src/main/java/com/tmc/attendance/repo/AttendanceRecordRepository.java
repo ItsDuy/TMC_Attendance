@@ -2,6 +2,7 @@ package com.tmc.attendance.repo;
 
 import com.tmc.attendance.domain.AttendanceRecord;
 import com.tmc.attendance.domain.AttendanceStatus;
+import com.tmc.attendance.domain.EventSource;
 import com.tmc.attendance.domain.Direction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -19,6 +20,9 @@ public interface AttendanceRecordRepository extends JpaRepository<AttendanceReco
             UUID employeeId, Collection<AttendanceStatus> statuses);
 
     List<AttendanceRecord> findByStatusOrderByScannedAtAsc(AttendanceStatus status);
+
+    List<AttendanceRecord> findBySourceAndScannedAtGreaterThanEqualAndScannedAtLessThanOrderByScannedAtDesc(
+            EventSource source, Instant from, Instant to);
 
     @Query("""
             select r from AttendanceRecord r

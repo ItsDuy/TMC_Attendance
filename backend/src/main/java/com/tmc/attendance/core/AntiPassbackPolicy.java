@@ -36,7 +36,8 @@ public class AntiPassbackPolicy implements AccessPolicy {
 
         if (last == null) {
             return context.direction() == Direction.OUT
-                    ? Optional.of(new Denial("NO_CHECK_IN", "No check-in exists for this employee"))
+                    ? Optional.of(new Denial("NO_CHECK_IN",
+                            "Can't check out: this person has not checked in yet. Scan at an IN gate first."))
                     : Optional.empty();
         }
 
@@ -48,16 +49,19 @@ public class AntiPassbackPolicy implements AccessPolicy {
         if (last.getDirection() == context.direction()
                 && sinceLast.compareTo(cooldown) < 0) {
             return Optional.of(new Denial("DUPLICATE_SCAN",
-                    "Repeated scan within the anti-passback window"));
+                    "Already checked " + last.getDirection().name()
+                            + " less than " + cooldown.toMinutes() + " minutes ago (anti-passback: one QR, one person)."));
         }
 
         if (context.direction() == Direction.OUT) {
             if (last.getDirection() == Direction.OUT) {
-                return Optional.of(new Denial("NO_CHECK_IN", "No open check-in to check out from"));
+                return Optional.of(new Denial("NO_CHECK_IN",
+                        "Can't check out: this person is already checked out. Scan at an IN gate to check in."));
             }
             if (sinceLast.compareTo(maxOpen) > 0) {
                 return Optional.of(new Denial("CHECK_IN_TOO_OLD",
-                        "Check-in is older than the maximum open window"));
+                        "Can't check out: the last check-in is more than " + maxOpen.toHours()
+                        + " hours old. Ask HR to fix the record."));
             }
         }
 

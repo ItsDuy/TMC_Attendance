@@ -7,6 +7,11 @@ export type SessionUser = {
   username: string;
   role: string;
   employeeId: string | null;
+  /** Filled from GET /api/me when the account belongs to an employee. */
+  employeeCode?: string | null;
+  fullName?: string | null;
+  department?: string | null;
+  factoryName?: string | null;
 };
 
 export class ApiError extends Error {
@@ -90,7 +95,20 @@ export async function login(username: string, password: string) {
     employeeId: response.employeeId,
   };
   storeSession(response.token, user);
-  return user;
+  return refreshProfile(user);
+}
+
+/** Ask the server who is signed in (name, employee code, factory) and keep it in the session. */
+export async function refreshProfile(user: SessionUser): Promise<SessionUser> {
+  try {
+    const me = await request<SessionUser>("/api/me");
+    const merged: SessionUser = { ...user, ...me };
+    const token = getToken();
+    if (token) storeSession(token, merged);
+    return merged;
+  } catch {
+    return user; // the session still works without the profile details
+  }
 }
 
 export async function loginAsKiosk(kioskId: string, secret: string, path: string, body: unknown) {
@@ -170,8 +188,9 @@ export type AttendanceRecord = {
   recordedAt: string;
   status: string;
   gateOutcome: string | null;
-  source: "ONLINE" | "OFFLINE";
+  source: "ONLINE" | "OFFLINE" | "MANUAL";
   reason: string | null;
+  enteredBy?: string | null;
 };
 
 export type ScanResult = {
@@ -196,6 +215,8 @@ export type MonthlyRow = {
   checkOuts: number;
   firstCheckIn: string | null;
   lastCheckOut: string | null;
+  /** Entries a guard recorded by hand this month. */
+  manualEntries?: number;
 };
 
 export type ExportBatch = {

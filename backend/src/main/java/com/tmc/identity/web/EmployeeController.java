@@ -1,5 +1,6 @@
 package com.tmc.identity.web;
 
+import com.tmc.identity.api.AccessScopeService;
 import com.tmc.identity.api.CreateEmployeeRequest;
 import com.tmc.identity.api.EmployeeResponse;
 import com.tmc.identity.api.EmployeeService;
@@ -29,27 +30,31 @@ import java.util.UUID;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+    private final AccessScopeService scopes;
 
-    public EmployeeController(EmployeeService employeeService) {
+    public EmployeeController(EmployeeService employeeService, AccessScopeService scopes) {
         this.employeeService = employeeService;
+        this.scopes = scopes;
     }
 
+    /** Who and how much detail the viewer gets is decided by {@link AccessScopeService}, not here. */
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','HR','SUPERVISOR')")
-    public List<EmployeeResponse> list(@RequestParam(required = false) UUID factoryId) {
-        return employeeService.list(factoryId);
+    public List<EmployeeResponse> list(@RequestParam(required = false) UUID factoryId,
+                                       Authentication authentication) {
+        return employeeService.list(factoryId, scopes.scopeFor(SecurityUtils.user(authentication)));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('HR')")
     public EmployeeResponse create(@Valid @RequestBody CreateEmployeeRequest request,
                                    Authentication authentication) {
         return employeeService.create(request, SecurityUtils.actor(authentication));
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('HR')")
     public EmployeeResponse update(@PathVariable UUID id,
                                    @Valid @RequestBody UpdateEmployeeRequest request,
                                    Authentication authentication) {
@@ -57,14 +62,14 @@ public class EmployeeController {
     }
 
     @PostMapping("/{id}/qr/rotate")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('HR')")
     public CredentialResponse rotate(@PathVariable UUID id, Authentication authentication) {
         QrCredential credential = employeeService.rotate(id, SecurityUtils.actor(authentication));
         return CredentialResponse.from(credential);
     }
 
     @PostMapping("/{id}/qr/revoke")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('HR')")
     public CredentialResponse revoke(@PathVariable UUID id, Authentication authentication) {
         QrCredential credential = employeeService.revoke(id, SecurityUtils.actor(authentication));
         return CredentialResponse.from(credential);

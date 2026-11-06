@@ -12,6 +12,9 @@ public interface EmployeeLookup {
 
     Optional<EmployeeView> find(UUID employeeId);
 
+    /** By the code printed on the employee's ID card, e.g. BD004. */
+    Optional<EmployeeView> findByCode(String employeeCode);
+
     List<EmployeeView> findByFactory(UUID factoryId);
 
     List<EmployeeView> findAll();

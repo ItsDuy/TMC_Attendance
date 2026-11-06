@@ -1,5 +1,5 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { clearSession, getStoredUser, type SessionUser } from "./api";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { clearSession, getStoredUser, refreshProfile, type SessionUser } from "./api";
 
 type AuthContextValue = {
   user: SessionUser | null;
@@ -11,6 +11,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<SessionUser | null>(getStoredUser());
+
+  // Sessions saved before profiles existed have no name yet: fetch it once.
+  useEffect(() => {
+    if (user && user.employeeId && !user.fullName) {
+      refreshProfile(user).then(setUserState);
+    }
+  }, [user]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

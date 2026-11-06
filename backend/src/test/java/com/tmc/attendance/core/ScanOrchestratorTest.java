@@ -76,7 +76,7 @@ class ScanOrchestratorTest {
                 tokenVerifier,
                 history,
                 kiosks,
-                List.of(new EmployeeAccessPolicy()),
+                new AccessPolicyChain(List.of(new EmployeeAccessPolicy())),
                 new DirectionResolver(),
                 recorder,
                 turnstile,

@@ -8,6 +8,7 @@ import com.tmc.gate.repo.GateRepository;
 import com.tmc.identity.api.CreateEmployeeRequest;
 import com.tmc.identity.api.EmployeeResponse;
 import com.tmc.identity.api.EmployeeService;
+import com.tmc.identity.api.EmployeeView;
 import com.tmc.identity.domain.Factory;
 import com.tmc.identity.repo.FactoryRepository;
 import com.tmc.security.api.Role;
@@ -22,7 +23,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * Demo data for a fresh database. Disabled with {@code tmc.seed.enabled=false}.
@@ -33,6 +38,7 @@ public class DataSeeder implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
     private static final String DEMO_PASSWORD = "Password@123";
+    private static final Pattern SEEDED_CODE = Pattern.compile("(BD|LA)\\d{3}");
 
     private final TmcProperties properties;
     private final FactoryRepository factories;
@@ -61,8 +67,13 @@ public class DataSeeder implements ApplicationRunner {
         }
         if (factories.count() > 0) {
             log.info("Seed skipped: factories already present");
-            return;
+        } else {
+            seedFreshDatabase();
         }
+        ensureDemoAccounts();
+    }
+
+    private void seedFreshDatabase() {
 
         Factory binhDuong = factories.save(new Factory("BD", "Binh Duong Factory"));
         Factory longAn = factories.save(new Factory("LA", "Long An Factory"));
@@ -74,23 +85,12 @@ public class DataSeeder implements ApplicationRunner {
         kioskList.addAll(provisionGateStation(longAn, "Gate A - In", GateDirection.IN));
         kioskList.addAll(provisionGateStation(longAn, "Gate A - Out", GateDirection.OUT));
 
-        List<EmployeeResponse> created = new ArrayList<>();
-        created.addAll(createEmployees(binhDuong, "BD", List.of(
+        createEmployees(binhDuong, "BD", List.of(
                 "Nguyen Van An", "Tran Thi Binh", "Le Quang Cuong", "Pham Thi Dung",
-                "Hoang Van Em", "Vu Thi Giang", "Do Van Hai", "Bui Thi Lan")));
-        created.addAll(createEmployees(longAn, "LA", List.of(
-                "Dang Van Minh", "Nguyen Thi Nga", "Truong Van Oanh", "Ly Thi Phuong")));
+                "Hoang Van Em", "Vu Thi Giang", "Do Van Hai", "Bui Thi Lan"));
+        createEmployees(longAn, "LA", List.of(
+                "Dang Van Minh", "Nguyen Thi Nga", "Truong Van Oanh", "Ly Thi Phuong"));
 
-        AppUser admin = new AppUser("admin", passwordEncoder.encode(DEMO_PASSWORD), Role.ADMIN, null);
-        AppUser hr = new AppUser("hr", passwordEncoder.encode(DEMO_PASSWORD), Role.HR, created.get(0).id());
-        AppUser supervisor = new AppUser("supervisor", passwordEncoder.encode(DEMO_PASSWORD),
-                Role.SUPERVISOR, created.get(1).id());
-        AppUser guard = new AppUser("guard", passwordEncoder.encode(DEMO_PASSWORD), Role.SECURITY, null);
-        AppUser executive = new AppUser("executive", passwordEncoder.encode(DEMO_PASSWORD),
-                Role.EXECUTIVE, null);
-        AppUser employee = new AppUser("employee", passwordEncoder.encode(DEMO_PASSWORD),
-                Role.EMPLOYEE, created.get(0).id());
-        users.saveAll(List.of(admin, hr, supervisor, guard, executive, employee));
 
         StringBuilder kioskTable = new StringBuilder();
         for (KioskResponse kiosk : kioskList) {
@@ -105,15 +105,82 @@ public class DataSeeder implements ApplicationRunner {
                 ================================================================
                  TMC demo data seeded
                 ================================================================
-                 Accounts (password {}):
-                   admin / hr / supervisor / guard / executive / employee
-                   employee account is linked to {}
+                 Accounts: see the "Demo accounts" block below
                 ----------------------------------------------------------------
                  Kiosks (id / name / secret):
                 {}
                 ================================================================
                 """,
-                DEMO_PASSWORD, created.get(0).employeeCode(), kioskTable);
+                kioskTable);
+    }
+
+    /**
+     * Idempotent, runs on every start: one login per seeded employee (username = employee
+     * code in lower case) plus the staff accounts, each staff account linked to a DIFFERENT
+     * employee so nobody shares an attendance history by accident.
+     */
+    private void ensureDemoAccounts() {
+        Map<String, EmployeeView> byCode = new HashMap<>();
+        for (EmployeeView employee : employees.findAll()) {
+            if (SEEDED_CODE.matcher(employee.employeeCode()).matches()) {
+                byCode.put(employee.employeeCode(), employee);
+            }
+        }
+        if (byCode.isEmpty()) {
+            return;
+        }
+
+        List<String> added = new ArrayList<>();
+        ensure("admin", Role.ADMIN, null, added);
+        ensure("guard", Role.SECURITY, null, added);
+        ensure("executive", Role.EXECUTIVE, null, added);
+        ensure("employee", Role.EMPLOYEE, idOf(byCode, "BD001"), added);
+        ensure("supervisor", Role.SUPERVISOR, idOf(byCode, "BD002"), added);
+        ensure("hr", Role.HR, idOf(byCode, "BD003"), added);
+        byCode.keySet().stream().sorted().forEach(code ->
+                ensure(code.toLowerCase(), Role.EMPLOYEE, byCode.get(code).id(), added));
+
+        if (!added.isEmpty()) {
+            log.info("Demo accounts added or re-linked: {}", String.join(", ", added));
+        }
+        log.info("""
+
+                ================================================================
+                 Demo accounts (password {})
+                ----------------------------------------------------------------
+                 admin       System administrator
+                 hr          HR staff               = BD003 {}
+                 supervisor  Production supervisor  = BD002 {}
+                 guard       Security guard
+                 executive   Executive management
+                 employee    Employee               = BD001 {}
+                 bd001 … bd008, la001 … la004   one login per employee
+                ================================================================
+                """,
+                DEMO_PASSWORD, nameOf(byCode, "BD003"), nameOf(byCode, "BD002"), nameOf(byCode, "BD001"));
+    }
+
+    /** Create the account if missing; re-link a seeded account that points at the wrong person. */
+    private void ensure(String username, Role role, UUID employeeId, List<String> added) {
+        AppUser existing = users.findByUsername(username).orElse(null);
+        if (existing == null) {
+            users.save(new AppUser(username, passwordEncoder.encode(DEMO_PASSWORD), role, employeeId));
+            added.add(username);
+        } else if (employeeId != null && !employeeId.equals(existing.getEmployeeId())) {
+            existing.linkEmployee(employeeId);
+            users.save(existing);
+            added.add(username + " (re-linked)");
+        }
+    }
+
+    private static UUID idOf(Map<String, EmployeeView> byCode, String code) {
+        EmployeeView employee = byCode.get(code);
+        return employee == null ? null : employee.id();
+    }
+
+    private static String nameOf(Map<String, EmployeeView> byCode, String code) {
+        EmployeeView employee = byCode.get(code);
+        return employee == null ? "" : employee.fullName();
     }
 
     private List<KioskResponse> provisionGateStation(Factory factory, String gateName,

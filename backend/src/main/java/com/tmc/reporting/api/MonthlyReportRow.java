@@ -12,6 +12,8 @@ public record MonthlyReportRow(
         int checkIns,
         int checkOuts,
         Instant firstCheckIn,
-        Instant lastCheckOut
+        Instant lastCheckOut,
+        /** Entries a guard recorded by hand this month: HR reviews these. */
+        int manualEntries
 ) {
 }

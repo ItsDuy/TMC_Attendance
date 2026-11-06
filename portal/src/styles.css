@@ -161,6 +161,34 @@ code,
   gap: 10px;
 }
 
+.who-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.who-card strong {
+  font-size: 14px;
+}
+
+.who-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.chips-label {
+  margin: 14px 0 0;
+  font-size: 12px;
+}
+
 .who {
   display: flex;
   align-items: center;
@@ -582,4 +610,66 @@ tbody tr:hover {
   .content {
     padding: 20px;
   }
+}
+
+/* ---------- Live site map ---------- */
+.site-map .grid.two { align-items: start; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 4px 0 14px; }
+.map-legend .sw {
+  display: inline-grid; place-items: center; width: 18px; height: 14px; margin-right: 6px;
+  border-radius: 4px; font-style: normal; font-size: 10px; font-weight: 700; vertical-align: -2px;
+}
+.sw.open { background: var(--ok); color: #0c0f12; }
+.sw.idle { background: var(--surface-2); border: 1px solid var(--muted); color: var(--muted); }
+.sw.stuck { background: var(--bad); color: #fff; }
+.sw.offline { background: transparent; border: 1px dashed var(--muted); color: var(--muted); }
+.sw.person { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+
+.site { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; }
+.site-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.headcount { font-size: 26px; font-variant-numeric: tabular-nums; }
+.floor { width: 100%; height: auto; display: block; }
+.floor .wall { fill: var(--surface); stroke: var(--muted); stroke-width: 2; }
+.floor .floor-label { fill: var(--muted); font-size: 11px; }
+.floor .person { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.floor .door-gap { stroke: var(--surface-2); stroke-width: 6; }
+.floor .door { stroke-width: 2; }
+.floor .door-icon { font-size: 12px; font-weight: 700; }
+.floor .gate-name { fill: var(--text); font-size: 11px; }
+.floor .gate-dir { fill: var(--muted); font-size: 10px; }
+.floor .gate-state { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; }
+
+.gate.idle .door { fill: var(--surface-2); stroke: var(--muted); }
+.gate.idle .door-icon, .gate.idle .gate-state { fill: var(--muted); }
+.gate.open .door { fill: var(--ok); stroke: var(--ok); animation: door-pulse 1s ease-in-out infinite; }
+.gate.open .door-icon { fill: #0c0f12; }
+.gate.open .gate-state { fill: var(--ok); }
+.gate.stuck .door { fill: var(--bad); stroke: var(--bad); }
+.gate.stuck .door-icon { fill: #fff; }
+.gate.stuck .gate-state { fill: var(--bad); }
+.gate.offline .door { fill: transparent; stroke: var(--muted); stroke-dasharray: 4 3; }
+.gate.offline .door-icon, .gate.offline .gate-state, .gate.offline .gate-name { fill: var(--muted); }
+@keyframes door-pulse { 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) { .gate.open .door { animation: none; } }
+
+.chip.static { cursor: default; }
+.chip.static:hover { color: var(--muted); border-color: var(--line); }
+.site .chips { margin-top: 8px; }
+.feed-title { margin: 18px 0 8px; font-size: 14px; }
+table.feed td { padding: 6px 10px; }
+
+/* ---------- Manual entry (guard) & evacuation ---------- */
+.tag.manual { background: transparent; border: 1px dashed var(--warn); color: var(--warn); margin-left: 6px; }
+.manual-step { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
+.manual-step label { margin-top: 8px; }
+.evac-total { margin: 0 0 14px; }
+.evacuation td.tick, .evacuation th.tick { width: 52px; text-align: center; }
+.evacuation .box { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--muted); border-radius: 3px; }
+@media print {
+  .sidebar, .no-print, .btn { display: none !important; }
+  .shell, .content { display: block !important; margin: 0 !important; padding: 0 !important; }
+  body, .card, table, th, td { background: #fff !important; color: #000 !important; box-shadow: none !important; }
+  .card { border: 1px solid #999 !important; break-inside: avoid; }
+  .muted { color: #444 !important; }
+  .evacuation .box { border-color: #000; }
 }

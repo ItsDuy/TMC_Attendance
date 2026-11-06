@@ -27,3 +27,10 @@ logs/
 
 # OS
 .DS_Store
+
+# Load-test runs (a sample report is kept in docs/load-test/)
+perf/results/
+
+# Python
+__pycache__/
+*.pyc

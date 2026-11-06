@@ -90,7 +90,7 @@ class AntiPassbackPolicyTest {
     }
 
     private ScanContext context(Direction direction, AttendanceRecord last) {
-        return new ScanContext(kiosk(), employee(), direction, now, last);
+        return new ScanContext(AccessPoint.kiosk(kiosk()), employee(), direction, now, last);
     }
 
     private AttendanceRecord record(Direction direction, Instant scannedAt) {

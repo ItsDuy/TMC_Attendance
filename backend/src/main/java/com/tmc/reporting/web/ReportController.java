@@ -1,8 +1,10 @@
 package com.tmc.reporting.web;
 
+import com.tmc.identity.api.AccessScopeService;
 import com.tmc.reporting.api.MonthlyReportRow;
 import com.tmc.reporting.domain.HrExportBatch;
 import com.tmc.reporting.service.HrExportService;
+import com.tmc.reporting.service.ManualEntryReviewService;
 import com.tmc.reporting.service.ReportingService;
 import com.tmc.security.api.SecurityUtils;
 import jakarta.validation.Valid;
@@ -28,17 +30,39 @@ public class ReportController {
 
     private final ReportingService reporting;
     private final HrExportService exporter;
+    private final AccessScopeService scopes;
+    private final ManualEntryReviewService manualReview;
 
-    public ReportController(ReportingService reporting, HrExportService exporter) {
+    public ReportController(ReportingService reporting, HrExportService exporter, AccessScopeService scopes,
+                            ManualEntryReviewService manualReview) {
         this.reporting = reporting;
         this.exporter = exporter;
+        this.scopes = scopes;
+        this.manualReview = manualReview;
     }
 
+    /** Named, per-employee report. A supervisor sees their own team only; executives use /summary. */
     @GetMapping("/attendance")
-    @PreAuthorize("hasAnyRole('HR','SUPERVISOR','EXECUTIVE','ADMIN')")
+    @PreAuthorize("hasAnyRole('HR','SUPERVISOR','ADMIN')")
     public List<MonthlyReportRow> monthly(@RequestParam String period,
-                                          @RequestParam(required = false) UUID factoryId) {
-        return reporting.monthly(YearMonth.parse(period), factoryId);
+                                          @RequestParam(required = false) UUID factoryId,
+                                          Authentication authentication) {
+        return reporting.monthly(YearMonth.parse(period), factoryId,
+                scopes.scopeFor(SecurityUtils.user(authentication)));
+    }
+
+    /** Manual entries recorded by guards this month, for HR to review. */
+    @GetMapping("/manual-entries")
+    @PreAuthorize("hasAnyRole('HR','ADMIN')")
+    public List<ManualEntryReviewService.ManualEntryLine> manualEntries(@RequestParam String period) {
+        return manualReview.forMonth(YearMonth.parse(period));
+    }
+
+    /** Company-level numbers per factory, without names. */
+    @GetMapping("/summary")
+    @PreAuthorize("hasAnyRole('EXECUTIVE','HR','ADMIN')")
+    public List<ReportingService.FactorySummary> summary(@RequestParam String period) {
+        return reporting.summary(YearMonth.parse(period));
     }
 
     @PostMapping("/exports")

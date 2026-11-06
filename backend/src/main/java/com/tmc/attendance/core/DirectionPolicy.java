@@ -31,7 +31,7 @@ public interface DirectionPolicy extends AccessPolicy {
         public Optional<Denial> evaluate(ScanContext context) {
             return context.direction() == Direction.IN
                     ? Optional.empty()
-                    : Optional.of(new Denial("WRONG_DIRECTION", "This gate only admits entry"));
+                    : Optional.of(new Denial("WRONG_DIRECTION", "This is an IN gate: it only records check-ins."));
         }
     }
 
@@ -45,7 +45,7 @@ public interface DirectionPolicy extends AccessPolicy {
         public Optional<Denial> evaluate(ScanContext context) {
             return context.direction() == Direction.OUT
                     ? Optional.empty()
-                    : Optional.of(new Denial("WRONG_DIRECTION", "This gate only admits exit"));
+                    : Optional.of(new Denial("WRONG_DIRECTION", "This is an OUT gate: it only records check-outs."));
         }
     }
 
