@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: tmc-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tmc}
+      POSTGRES_USER: ${POSTGRES_USER:-tmc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tmc}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tmc} -d ${POSTGRES_DB:-tmc}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    profiles: ["app"]
+    build: ./backend
+    container_name: tmc-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-tmc}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-tmc}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-tmc}
+      TMC_SECURITY_JWT_SECRET: ${TMC_SECURITY_JWT_SECRET:-dG1jLWRlbW8tc2VjcmV0LWtleS1tdXN0LWJlLWF0LWxlYXN0LTMyLWJ5dGVzLWxvbmc=}
+      TMC_SECURITY_QR_SECRET: ${TMC_SECURITY_QR_SECRET:-dG1jLXFyLWRlbW8tc2VjcmV0LW11c3QtYmUtYXQtbGVhc3QtMzItYnl0ZXMtbG9uZw==}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

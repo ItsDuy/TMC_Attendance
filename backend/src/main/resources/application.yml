@@ -1,0 +1,63 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: tmc-attendance
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/tmc}
+    username: ${SPRING_DATASOURCE_USERNAME:tmc}
+    password: ${SPRING_DATASOURCE_PASSWORD:tmc}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        format_sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  jackson:
+    default-property-inclusion: non_null
+  mvc:
+    problemdetails:
+      enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+tmc:
+  security:
+    jwt-secret: ${TMC_SECURITY_JWT_SECRET:dG1jLWRlbW8tc2VjcmV0LWtleS1tdXN0LWJlLWF0LWxlYXN0LTMyLWJ5dGVzLWxvbmc=}
+    jwt-ttl: PT8H
+    qr-secret: ${TMC_SECURITY_QR_SECRET:dG1jLXFyLWRlbW8tc2VjcmV0LW11c3QtYmUtYXQtbGVhc3QtMzItYnl0ZXMtbG9uZw==}
+    data-key: ${TMC_SECURITY_DATA_KEY:dG1jLWRhdGEta2V5LW11c3QtYmUtMzItYnl0ZXMtbG9uZyEhISE=}
+    kiosk-clock-skew: PT60S
+    qr-token-ttl: PT60S
+  turnstile:
+    mode: ${TMC_TURNSTILE_MODE:stub}
+    url: ${TMC_TURNSTILE_URL:http://localhost:9099}
+    timeout: PT1.5S
+  seed:
+    enabled: ${TMC_SEED_ENABLED:true}
+
+logging:
+  level:
+    com.tmc: INFO
+    org.hibernate.SQL: WARN

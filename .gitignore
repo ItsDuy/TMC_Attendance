@@ -1,0 +1,29 @@
+# Build output
+target/
+build/
+*.class
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Local databases
+*.db
+*.sqlite
+
+# OS
+.DS_Store
