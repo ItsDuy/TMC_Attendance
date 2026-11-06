@@ -1,8 +1,11 @@
 package com.tmc.reporting.service;
 
 import com.tmc.attendance.api.AttendanceReportingPort;
+import com.tmc.identity.api.AccessScope;
 import com.tmc.identity.api.EmployeeLookup;
 import com.tmc.identity.api.EmployeeView;
+import com.tmc.identity.api.FactoryLookup;
+import com.tmc.identity.api.FactoryView;
 import com.tmc.reporting.api.MonthlyReportRow;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,6 +14,7 @@ import java.time.Instant;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,10 +25,56 @@ public class ReportingService {
 
     private final AttendanceReportingPort attendance;
     private final EmployeeLookup employees;
+    private final FactoryLookup factories;
 
-    public ReportingService(AttendanceReportingPort attendance, EmployeeLookup employees) {
+    public ReportingService(AttendanceReportingPort attendance, EmployeeLookup employees,
+                            FactoryLookup factories) {
         this.attendance = attendance;
         this.employees = employees;
+        this.factories = factories;
+    }
+
+
+    /** The monthly report limited to the people the viewer may see (a supervisor: their team). */
+    @Transactional(readOnly = true)
+    public List<MonthlyReportRow> monthly(YearMonth period, UUID factoryId, AccessScope scope) {
+        List<MonthlyReportRow> rows = monthly(period, factoryId);
+        if (scope.isEveryone()) {
+            return rows;
+        }
+        Map<UUID, EmployeeView> directory = new HashMap<>();
+        employees.findAll().forEach(person -> directory.put(person.id(), person));
+        return rows.stream().filter(row -> scope.allows(directory.get(row.employeeId()))).toList();
+    }
+
+    /**
+     * Executive view: one line per factory, no names. Built from the same monthly report, so the
+     * numbers always match what HR exports.
+     */
+    @Transactional(readOnly = true)
+    public List<FactorySummary> summary(YearMonth period) {
+        int workingDays = period.lengthOfMonth();
+        return factories.findAll().stream()
+                .sorted(Comparator.comparing(FactoryView::code))
+                .map(factory -> {
+                    List<MonthlyReportRow> rows = monthly(period, factory.id());
+                    int headcount = employees.findByFactory(factory.id()).size();
+                    int personDays = rows.stream().mapToInt(MonthlyReportRow::daysPresent).sum();
+                    return new FactorySummary(factory.id(), factory.code(), factory.name(), headcount,
+                            rows.size(), personDays,
+                            rows.isEmpty() ? 0 : Math.round(personDays * 10.0 / rows.size()) / 10.0,
+                            rows.stream().mapToInt(MonthlyReportRow::checkIns).sum(),
+                            rows.stream().mapToInt(MonthlyReportRow::checkOuts).sum(),
+                            workingDays);
+                })
+                .toList();
+    }
+
+    /** Aggregates only: safe to show to anyone allowed to see company-level numbers. */
+    public record FactorySummary(UUID factoryId, String code, String name, int employees,
+                                 int employeesWhoAttended, int personDaysPresent,
+                                 double averageDaysPerAttendee, int checkIns, int checkOuts,
+                                 int daysInMonth) {
     }
 
     @Transactional(readOnly = true)
@@ -54,6 +104,13 @@ public class ReportingService {
             }
         }
 
+        for (AttendanceReportingPort.ManualEntry manual : attendance.manualEntries(from, to, factoryId)) {
+            MutableRow row = rows.get(manual.employeeId());
+            if (row != null) {
+                row.manualEntries++;
+            }
+        }
+
         List<MonthlyReportRow> result = new ArrayList<>(rows.values().stream()
                 .map(MutableRow::toRow)
                 .toList());
@@ -70,6 +127,7 @@ public class ReportingService {
         private int checkOuts;
         private Instant firstCheckIn;
         private Instant lastCheckOut;
+        private int manualEntries;
 
         private MutableRow(EmployeeView employee, UUID factoryId) {
             this.employee = employee;
@@ -103,7 +161,8 @@ public class ReportingService {
                     checkIns,
                     checkOuts,
                     firstCheckIn,
-                    lastCheckOut);
+                    lastCheckOut,
+                    manualEntries);
         }
     }
 }

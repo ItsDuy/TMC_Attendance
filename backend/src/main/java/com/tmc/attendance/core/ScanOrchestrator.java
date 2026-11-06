@@ -15,9 +15,7 @@ import com.tmc.shared.idempotency.ProcessedEventRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -34,7 +32,7 @@ public class ScanOrchestrator {
     private final QrTokenVerifier tokenVerifier;
     private final AttendanceHistory history;
     private final KioskLookup kiosks;
-    private final List<AccessPolicy> policies;
+    private final AccessPolicyChain accessRules;
     private final DirectionResolver directionResolver;
     private final AttendanceRecorder recorder;
     private final TurnstilePort turnstile;
@@ -47,7 +45,7 @@ public class ScanOrchestrator {
     public ScanOrchestrator(QrTokenVerifier tokenVerifier,
                             AttendanceHistory history,
                             KioskLookup kiosks,
-                            List<AccessPolicy> policies,
+                            AccessPolicyChain accessRules,
                             DirectionResolver directionResolver,
                             AttendanceRecorder recorder,
                             TurnstilePort turnstile,
@@ -59,7 +57,7 @@ public class ScanOrchestrator {
         this.tokenVerifier = tokenVerifier;
         this.history = history;
         this.kiosks = kiosks;
-        this.policies = policies;
+        this.accessRules = accessRules;
         this.directionResolver = directionResolver;
         this.recorder = recorder;
         this.turnstile = turnstile;
@@ -91,16 +89,12 @@ public class ScanOrchestrator {
         AttendanceRecord last = history.lastSettled(verified.employee().id()).orElse(null);
         Direction direction = directionResolver.resolve(kiosk, command.requestedDirection(), last);
         ScanContext context = new ScanContext(
-                kiosk, verified.employee(), direction, command.scannedAt(), last);
+                AccessPoint.kiosk(kiosk), verified.employee(), direction, command.scannedAt(), last);
 
-        List<AccessPolicy> chain = new ArrayList<>(policies);
-        chain.add(DirectionPolicy.forGate(kiosk.gateDirection()));
-        for (AccessPolicy policy : chain) {
-            Optional<AccessPolicy.Denial> denial = policy.evaluate(context);
-            if (denial.isPresent()) {
-                auditDenied(kiosk, denial.get().code());
-                return assembler.denied(denial.get());
-            }
+        Optional<AccessPolicy.Denial> denial = accessRules.firstDenial(context);
+        if (denial.isPresent()) {
+            auditDenied(kiosk, denial.get().code());
+            return assembler.denied(denial.get(), context);
         }
 
         AttendanceRecord record;

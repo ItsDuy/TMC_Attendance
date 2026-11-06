@@ -16,6 +16,23 @@ public interface AttendanceReportingPort {
 
     List<EmployeeDays> daysPresent(Instant from, Instant to, UUID factoryId);
 
+    /** Every scan whose scan time falls in [from, to), newest first (live site map). */
+    List<SiteEvent> events(Instant from, Instant to);
+
+    /** Scans recorded while the gate failed, still waiting for a guard. */
+    List<SiteEvent> awaitingGuard();
+
+    /** Entries a security guard recorded by hand, newest first, for HR review. */
+    List<ManualEntry> manualEntries(Instant from, Instant to, UUID factoryId);
+
+    record ManualEntry(UUID employeeId, UUID factoryId, UUID gateId, Direction direction, Instant at,
+                       String reasonCode, String note, String enteredBy) {
+    }
+
+    record SiteEvent(UUID employeeId, UUID factoryId, UUID gateId, Direction direction, String status,
+                     String gateOutcome, Instant scannedAt, Instant recordedAt) {
+    }
+
     record DirectionAggregate(UUID employeeId, Direction direction, long eventCount,
                               Instant firstAt, Instant lastAt) {
     }

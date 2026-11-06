@@ -1,42 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type AuditEntry, type Employee, type Factory, type Kiosk } from "../api";
-
-const EMPTY_FORM = {
-  employeeCode: "",
-  fullName: "",
-  factoryId: "",
-  department: "Assembly",
-  email: "",
-  phone: "",
-};
+import { api, type AuditEntry, type Kiosk } from "../api";
 
 export default function AdminPage() {
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [factories, setFactories] = useState<Factory[]>([]);
   const [kiosks, setKiosks] = useState<Kiosk[]>([]);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [chain, setChain] = useState<{ valid: boolean; checked: number; brokenAt: number | null } | null>(null);
-  const [form, setForm] = useState(EMPTY_FORM);
   const [revealed, setRevealed] = useState<{ name: string; secret: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [people, factoryList, kioskList, auditEntries] = await Promise.all([
-        api.get<Employee[]>("/api/employees"),
-        api.get<Factory[]>("/api/factories"),
+      const [kioskList, auditEntries] = await Promise.all([
         api.get<Kiosk[]>("/api/kiosks"),
         api.get<AuditEntry[]>("/api/audit?size=25"),
       ]);
-      setEmployees(people);
-      setFactories(factoryList);
-      setKiosks(kioskList);
+      setKiosks(kioskList.filter((k) => !k.name.startsWith("[test]")));
       setAudit(auditEntries);
-      setForm((current) => ({
-        ...current,
-        factoryId: current.factoryId || factoryList[0]?.id || "",
-      }));
       setError(null);
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : "Could not load admin data");
@@ -47,19 +26,6 @@ export default function AdminPage() {
     load();
   }, [load]);
 
-  async function createEmployee(event: React.FormEvent) {
-    event.preventDefault();
-    setNotice(null);
-    try {
-      await api.post("/api/employees", form);
-      setNotice(`Created ${form.employeeCode}`);
-      setForm({ ...EMPTY_FORM, factoryId: form.factoryId });
-      load();
-    } catch (problem) {
-      setError(problem instanceof Error ? problem.message : "Could not create employee");
-    }
-  }
-
   async function rotate(kiosk: Kiosk) {
     try {
       const updated = await api.post<Kiosk>(`/api/kiosks/${kiosk.id}/rotate-secret`);
@@ -67,16 +33,6 @@ export default function AdminPage() {
       load();
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : "Could not rotate the secret");
-    }
-  }
-
-  async function rotateQr(employee: Employee) {
-    try {
-      await api.post(`/api/employees/${employee.id}/qr/rotate`);
-      setNotice(`Rotated the QR credential for ${employee.employeeCode} (v${employee.credentialVersion + 1})`);
-      load();
-    } catch (problem) {
-      setError(problem instanceof Error ? problem.message : "Could not rotate the credential");
     }
   }
 
@@ -96,13 +52,16 @@ export default function AdminPage() {
       <header className="page-head">
         <div>
           <h1>Administration</h1>
-          <p className="muted">Employees, kiosk provisioning and the tamper-evident audit log.</p>
+          <p className="muted">
+            IT administration: gate kiosks and the tamper-evident audit log. Employee records belong
+            to HR, and admin cannot change attendance data, so the person who checks the log is not
+            the person who edits the data (separation of duties).
+          </p>
         </div>
         <button className="btn ghost" onClick={load}>Refresh</button>
       </header>
 
       {error && <p className="error">{error}</p>}
-      {notice && <p className="notice">{notice}</p>}
 
       {revealed && (
         <div className="card highlight">
@@ -112,78 +71,6 @@ export default function AdminPage() {
           <button className="btn ghost" onClick={() => setRevealed(null)}>Dismiss</button>
         </div>
       )}
-
-      <div className="grid two">
-        <section className="card">
-          <h2>Employees</h2>
-          <table>
-            <thead>
-              <tr><th>Code</th><th>Name</th><th>Credential</th><th /></tr>
-            </thead>
-            <tbody>
-              {employees.map((employee) => (
-                <tr key={employee.id}>
-                  <td className="mono">{employee.employeeCode}</td>
-                  <td>{employee.fullName}</td>
-                  <td>
-                    <span className={`tag status-${employee.credentialStatus.toLowerCase()}`}>
-                      v{employee.credentialVersion} {employee.credentialStatus}
-                    </span>
-                  </td>
-                  <td>
-                    <button className="btn small ghost" onClick={() => rotateQr(employee)}>Rotate QR</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-
-        <section className="card">
-          <h2>Register an employee</h2>
-          <form className="stack" onSubmit={createEmployee}>
-            <div className="row">
-              <label>
-                Code
-                <input required value={form.employeeCode}
-                  onChange={(event) => setForm({ ...form, employeeCode: event.target.value })} />
-              </label>
-              <label>
-                Full name
-                <input required value={form.fullName}
-                  onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
-              </label>
-            </div>
-            <label>
-              Factory
-              <select value={form.factoryId}
-                onChange={(event) => setForm({ ...form, factoryId: event.target.value })}>
-                {factories.map((factory) => (
-                  <option key={factory.id} value={factory.id}>{factory.name}</option>
-                ))}
-              </select>
-            </label>
-            <div className="row">
-              <label>
-                Department
-                <input value={form.department}
-                  onChange={(event) => setForm({ ...form, department: event.target.value })} />
-              </label>
-              <label>
-                Email
-                <input type="email" required value={form.email}
-                  onChange={(event) => setForm({ ...form, email: event.target.value })} />
-              </label>
-            </div>
-            <label>
-              Phone
-              <input value={form.phone}
-                onChange={(event) => setForm({ ...form, phone: event.target.value })} />
-            </label>
-            <button className="btn primary">Create employee</button>
-          </form>
-        </section>
-      </div>
 
       <section className="card">
         <h2>Kiosks</h2>

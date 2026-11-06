@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.util.List;
+import java.util.Objects;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -89,6 +90,23 @@ public class EmployeeService implements EmployeeLookup {
         return toResponse(employee, credential);
     }
 
+    /** The employees the viewer may see, with contact details only if the scope allows them. */
+    @Transactional(readOnly = true)
+    public List<EmployeeResponse> list(UUID factoryId, AccessScope scope) {
+        List<Employee> found = factoryId == null
+                ? employees.findAll()
+                : employees.findByFactoryIdOrderByEmployeeCodeAsc(factoryId);
+        return found.stream()
+                .map(employee -> {
+                    QrCredential credential = credentials.findById(employee.getId()).orElse(null);
+                    return scope.allows(toView(employee, credential))
+                            ? toResponse(employee, credential, scope.contactDetailsVisible())
+                            : null;
+                })
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public List<EmployeeResponse> list(UUID factoryId) {
         List<Employee> found = factoryId == null
@@ -128,6 +146,19 @@ public class EmployeeService implements EmployeeLookup {
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<EmployeeView> findByCode(String employeeCode) {
+        if (employeeCode == null || employeeCode.isBlank()) {
+            return Optional.empty();
+        }
+        String code = employeeCode.trim();
+        // Exact first; then upper case, so a guard typing "bd004" still finds BD004.
+        return employees.findByEmployeeCode(code)
+                .or(() -> employees.findByEmployeeCode(code.toUpperCase()))
+                .map(employee -> toView(employee, credentials.findById(employee.getId()).orElse(null)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<EmployeeView> findByFactory(UUID factoryId) {
         return employees.findByFactoryIdOrderByEmployeeCodeAsc(factoryId).stream()
                 .map(employee -> toView(employee,
@@ -162,14 +193,18 @@ public class EmployeeService implements EmployeeLookup {
     }
 
     private EmployeeResponse toResponse(Employee employee, QrCredential credential) {
+        return toResponse(employee, credential, true);
+    }
+
+    private EmployeeResponse toResponse(Employee employee, QrCredential credential, boolean withContactDetails) {
         return new EmployeeResponse(
                 employee.getId(),
                 employee.getEmployeeCode(),
                 employee.getFullName(),
                 employee.getFactoryId(),
                 employee.getDepartment(),
-                employee.getEmail(),
-                cipher.decrypt(employee.getPhoneEnc()),
+                withContactDetails ? employee.getEmail() : null,
+                withContactDetails ? cipher.decrypt(employee.getPhoneEnc()) : null,
                 employee.getStatus(),
                 credential == null ? 0 : credential.getVersion(),
                 credential == null ? CredentialStatus.REVOKED : credential.getStatus());

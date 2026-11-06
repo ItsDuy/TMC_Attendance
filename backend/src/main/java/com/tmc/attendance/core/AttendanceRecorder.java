@@ -81,6 +81,37 @@ public class AttendanceRecorder {
         return record;
     }
 
+    /**
+     * A security guard recorded an entry by hand (phone, kiosk or network down). It is complete at
+     * once: the guard let the person through. Same outbox event as a scan, so downstream consumers
+     * see every attendance fact, marked MANUAL.
+     */
+    @Transactional
+    public AttendanceRecord persistManual(EmployeeView employee, UUID gateId, UUID factoryId,
+                                          Direction direction, String reasonCode, String note,
+                                          String guard) {
+        Instant now = clock.instant();
+        AttendanceRecord record = new AttendanceRecord(
+                employee.id(), gateId, null, factoryId, direction, now, now, EventSource.MANUAL);
+        record.completeManually(reasonCode, note, guard);
+        records.save(record);
+
+        outbox.save(OutboxEvent.pending(
+                "AttendanceRecorded", "AttendanceRecord", record.getId().toString(),
+                payload(Map.of(
+                        "recordId", record.getId().toString(),
+                        "employeeId", employee.id().toString(),
+                        "employeeCode", employee.employeeCode(),
+                        "factoryId", factoryId.toString(),
+                        "gateId", gateId.toString(),
+                        "direction", direction.name(),
+                        "scannedAt", now.toString(),
+                        "source", "MANUAL",
+                        "enteredBy", guard)),
+                now));
+        return record;
+    }
+
     @Transactional
     public AttendanceRecord markCompleted(UUID recordId, String gateOutcome) {
         AttendanceRecord record = require(recordId);

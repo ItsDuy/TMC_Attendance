@@ -20,14 +20,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 @Service
-public class KioskService implements KioskLookup, KioskAuthenticator {
+public class KioskService implements KioskLookup, KioskAuthenticator, GateStatusLookup {
 
     private final KioskRepository kiosks;
     private final GateRepository gates;
@@ -115,6 +117,22 @@ public class KioskService implements KioskLookup, KioskAuthenticator {
 
         return new ProvisioningBundle("TMC1", qrTtlSeconds, kiosk.getId(), kiosk.getFactoryId(),
                 gate.getId(), gate.getDirection().name(), kiosk.getConfigVersion(), keys);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<GateStatusView> gateStatuses() {
+        Map<UUID, Instant> lastBeat = new HashMap<>();
+        for (Kiosk kiosk : kiosks.findAll()) {
+            if (kiosk.getLastHeartbeatAt() != null) {
+                lastBeat.merge(kiosk.getGateId(), kiosk.getLastHeartbeatAt(),
+                        (a, b) -> a.isAfter(b) ? a : b);
+            }
+        }
+        return gates.findAll().stream()
+                .map(gate -> new GateStatusView(gate.getId(), gate.getFactoryId(), gate.getName(),
+                        gate.getDirection(), lastBeat.get(gate.getId())))
+                .toList();
     }
 
     @Override

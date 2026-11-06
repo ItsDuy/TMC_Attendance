@@ -57,6 +57,9 @@ public class AttendanceRecord implements Persistable<UUID> {
     @Column(name = "reason")
     private String reason;
 
+    @Column(name = "entered_by")
+    private String enteredBy;
+
     @Transient
     private boolean isNew = true;
 
@@ -82,6 +85,17 @@ public class AttendanceRecord implements Persistable<UUID> {
         this.status = AttendanceStatus.COMPLETED;
         this.gateOutcome = gateOutcome;
         this.reason = null;
+    }
+
+    /**
+     * A guard recorded this entry by hand. No turnstile was actuated by the system, so the
+     * outcome names the reason, the note explains it and {@code enteredBy} names the guard.
+     */
+    public void completeManually(String reasonCode, String note, String guard) {
+        this.status = AttendanceStatus.COMPLETED;
+        this.gateOutcome = "MANUAL_" + reasonCode;
+        this.reason = note;
+        this.enteredBy = guard;
     }
 
     public void gateUnavailable(String reason) {
@@ -148,6 +162,10 @@ public class AttendanceRecord implements Persistable<UUID> {
 
     public EventSource getSource() {
         return source;
+    }
+
+    public String getEnteredBy() {
+        return enteredBy;
     }
 
     public String getReason() {

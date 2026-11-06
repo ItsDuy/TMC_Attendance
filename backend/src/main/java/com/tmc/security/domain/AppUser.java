@@ -67,6 +67,11 @@ public class AppUser {
         return role;
     }
 
+    /** Re-point the account at another employee record (used by the demo seeder). */
+    public void linkEmployee(UUID employeeId) {
+        this.employeeId = employeeId;
+    }
+
     public UUID getEmployeeId() {
         return employeeId;
     }

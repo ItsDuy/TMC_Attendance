@@ -1,5 +1,6 @@
 package com.tmc.architecture;
 
+import com.tmc.attendance.core.AccessPolicy;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
@@ -49,6 +50,39 @@ class ArchitectureTest {
             classes().that().haveSimpleNameEndingWith("Port")
                     .should().resideInAPackage("..api")
                     .because("ports are the published contracts of a module");
+
+    // ---- Dependency Inversion: modules depend on each other's published ports, never on storage.
+
+    @ArchTest
+    static final ArchRule reporting_reads_other_modules_only_through_their_ports =
+            noClasses().that().resideInAPackage("com.tmc.reporting..")
+                    .should().dependOnClassesThat().resideInAnyPackage(
+                            "com.tmc.attendance.repo..", "com.tmc.identity.repo..",
+                            "com.tmc.gate.repo..", "com.tmc.security.repo..")
+                    .because("reporting depends on abstractions (ports), not on other modules' tables (DIP)");
+
+    @ArchTest
+    static final ArchRule attendance_reads_other_modules_only_through_their_ports =
+            noClasses().that().resideInAPackage("com.tmc.attendance..")
+                    .should().dependOnClassesThat().resideInAnyPackage(
+                            "com.tmc.identity.repo..", "com.tmc.gate.repo..", "com.tmc.security.repo..")
+                    .because("the scan pipeline depends on lookups, not on other modules' tables (DIP)");
+
+    @ArchTest
+    static final ArchRule lookups_are_interfaces_published_in_api_packages =
+            classes().that().haveSimpleNameEndingWith("Lookup")
+                    .should().beInterfaces().andShould().resideInAPackage("..api")
+                    .because("consumers depend on narrow, role-specific interfaces (ISP, DIP)");
+
+    // ---- Open/Closed: a new access rule is a new AccessPolicy class; callers never name a rule.
+
+    @ArchTest
+    static final ArchRule callers_never_depend_on_concrete_access_rules =
+            noClasses().that().doNotImplement(AccessPolicy.class)
+                    .and().doNotHaveSimpleName("AccessPolicyChain")
+                    .and().doNotHaveSimpleName("DirectionPolicy")
+                    .should().dependOnClassesThat().implement(AccessPolicy.class)
+                    .because("only AccessPolicyChain knows the rules; adding one never edits a caller (OCP)");
 
     @ArchTest
     static final ArchRule services_are_not_in_web_packages =

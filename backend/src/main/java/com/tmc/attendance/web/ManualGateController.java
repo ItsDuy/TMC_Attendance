@@ -37,7 +37,7 @@ public class ManualGateController {
     }
 
     @PostMapping("/{gateId}/open")
-    @PreAuthorize("hasAnyRole('SECURITY','ADMIN')")
+    @PreAuthorize("hasRole('SECURITY')")
     public Map<String, Object> open(@PathVariable UUID gateId,
                                     @RequestParam(required = false) UUID recordId,
                                     Authentication authentication) {
@@ -77,7 +77,7 @@ public class ManualGateController {
      * confirms the recovery-queue record so it is not lost from reports.
      */
     @PostMapping("/records/{recordId}/resolve")
-    @PreAuthorize("hasAnyRole('SECURITY','ADMIN')")
+    @PreAuthorize("hasRole('SECURITY')")
     public Map<String, Object> resolve(@PathVariable UUID recordId, Authentication authentication) {
         recorder.resolveManually(recordId);
         audit.record(SecurityUtils.actor(authentication), "RECORD_RESOLVED_MANUALLY", "AttendanceRecord",

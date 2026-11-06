@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TMC load test · burst · PASS</title>
+<style>
+.viz-root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface-1: #fcfcfb; --text-primary: #0b0b0b; --text-secondary: #52514e;
+  --muted: #898781; --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --series-1: #2a78d6; --series-2: #eb6834; --good: #0ca30c; --good-text: #006300; --critical: #d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface-1: #1a1a19; --text-primary: #f0efec; --text-secondary: #c3c2b7;
+    --muted: #898781; --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --series-1: #3987e5; --series-2: #d95926; --good-text: #0ca30c;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+.viz-root { background: var(--page); color: var(--text-primary); min-height: 100vh;
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 32px 20px; }
+main { max-width: 880px; margin: 0 auto; }
+h1 { font-size: 24px; margin: 0 0 4px; }
+h2 { font-size: 16px; margin: 32px 0 10px; }
+.sub { color: var(--text-secondary); margin: 0 0 20px; }
+.verdict { display: flex; gap: 12px; align-items: center; padding: 14px 18px; border-radius: 10px;
+  background: var(--surface-1); border: 1px solid var(--border); margin-bottom: 20px; }
+.verdict .icon { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  color: #fff; font-weight: 700; }
+.verdict.pass .icon { background: var(--good); } .verdict.fail .icon { background: var(--critical); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.tile .k { color: var(--text-secondary); font-size: 13px; }
+.tile .v { font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.tile .n { color: var(--muted); font-size: 12px; }
+table { width: 100%; border-collapse: collapse; background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden; font-size: 14px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--grid); }
+th { color: var(--text-secondary); font-weight: 600; font-size: 13px; }
+td.num { font-variant-numeric: tabular-nums; }
+.status { white-space: nowrap; font-weight: 600; }
+.status.good { color: var(--good-text); } .status.bad { color: var(--critical); }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px; position: relative; }
+.legend { display: flex; gap: 18px; color: var(--text-secondary); font-size: 13px; margin: 0 0 6px 4px; }
+.legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+.legend .lim { border-top: 2px dashed var(--muted); height: 0; }
+svg { width: 100%; height: auto; display: block; }
+.grid { stroke: var(--grid); stroke-width: 1; }
+.tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.limit { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.lim-label, .end-label { fill: var(--text-secondary); font-size: 12px; }
+.ring { stroke: var(--surface-1); stroke-width: 2; }
+.axis-title { fill: var(--muted); font-size: 11px; }
+#xhair { stroke: var(--axis); stroke-width: 1; visibility: hidden; }
+#tip { position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.12); display: none;
+  font-variant-numeric: tabular-nums; min-width: 170px; }
+#tip b { display: block; margin-bottom: 4px; }
+#tip .row { display: flex; justify-content: space-between; gap: 14px; color: var(--text-secondary); }
+#tip .row span:last-child { color: var(--text-primary); }
+#tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; font-size: 14px; }
+dt { color: var(--text-secondary); } dd { margin: 0; }
+details summary { cursor: pointer; color: var(--text-secondary); margin: 10px 0; }
+.note { color: var(--text-secondary); font-size: 13px; }
+</style></head>
+<body><div class="viz-root"><main>
+<h1>TMC kiosk load test</h1>
+<p class="sub">Shift-change peak, both factories at the same time. Requirement: kiosk response ≤ 2 s,
+no attendance record lost.</p>
+
+<div class="verdict pass"><span class="icon">✓</span>
+<div><strong>PASS: every check met</strong><br>
+<span class="note">1,600 kiosk scans · GRANTED 1,600</span></div></div>
+
+<div class="tiles">
+  <div class="tile"><div class="k">p95 response</div><div class="v">429 ms</div><div class="n">limit 2 000 ms</div></div>
+  <div class="tile"><div class="k">p99 response</div><div class="v">440 ms</div><div class="n">median 332 ms</div></div>
+  <div class="tile"><div class="k">slowest scan</div><div class="v">453 ms</div><div class="n">1,600 of 1,600 under 2 s</div></div>
+  <div class="tile"><div class="k">records stored</div><div class="v">100.0%</div><div class="n">of scans sent</div></div>
+</div>
+
+<h2>Response time over the run (p95 per 5-second slot)</h2>
+<div class="card" id="chart">
+  <div class="legend"><span><i style="background:var(--series-1)"></i>Binh Duong</span>
+  <span><i style="background:var(--series-2)"></i>Long An</span><span><i class="lim"></i>2 s limit</span></div>
+  <svg viewBox="0 0 760 300" role="img" aria-label="p95 kiosk response time per time slot for both factories, against the 2 second limit">
+    <line x1="56" x2="656" y1="266.0" y2="266.0" class="grid"/><text x="48" y="270.0" class="tick" text-anchor="end">0</text><line x1="56" x2="656" y1="224.3" y2="224.3" class="grid"/><text x="48" y="228.3" class="tick" text-anchor="end">400</text><line x1="56" x2="656" y1="182.7" y2="182.7" class="grid"/><text x="48" y="186.7" class="tick" text-anchor="end">800</text><line x1="56" x2="656" y1="141.0" y2="141.0" class="grid"/><text x="48" y="145.0" class="tick" text-anchor="end">1,200</text><line x1="56" x2="656" y1="99.3" y2="99.3" class="grid"/><text x="48" y="103.3" class="tick" text-anchor="end">1,600</text><line x1="56" x2="656" y1="57.7" y2="57.7" class="grid"/><text x="48" y="61.7" class="tick" text-anchor="end">2,000</text><line x1="56" x2="656" y1="16.0" y2="16.0" class="grid"/><text x="48" y="20.0" class="tick" text-anchor="end">2,400</text>
+    <line x1="56" x2="656" y1="266" y2="266" stroke="var(--axis)"/>
+    <text x="56.0" y="290" class="tick" text-anchor="middle">0:00</text><text x="156.0" y="290" class="tick" text-anchor="middle">0:20</text><text x="256.0" y="290" class="tick" text-anchor="middle">0:40</text><text x="356.0" y="290" class="tick" text-anchor="middle">1:00</text><text x="456.0" y="290" class="tick" text-anchor="middle">1:20</text><text x="556.0" y="290" class="tick" text-anchor="middle">1:40</text><text x="656.0" y="290" class="tick" text-anchor="middle">2:00</text>
+    <text x="56" y="12" class="axis-title">ms</text>
+    <line x1="56" x2="656" y1="57.7" y2="57.7" class="limit"/><text x="664" y="61.7" class="lim-label">2 s limit</text><path d="M56.0,221.7 L81.0,221.2 L106.0,221.8 L131.0,220.8 L156.0,222.1 L181.0,221.8 L206.0,220.8 L231.0,220.7 L256.0,221.8 L281.0,221.4 L306.0,222.7 L331.0,222.5 L356.0,221.2 L381.0,221.9 L406.0,222.8 L431.0,221.2 L456.0,221.5 L481.0,220.6 L506.0,222.3 L531.0,221.1 L556.0,222.9 L581.0,220.5 L606.0,223.2 L631.0,220.6 L656.0,220.6" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><path d="M56.0,222.5 L81.0,221.9 L106.0,222.9 L131.0,220.8 L156.0,221.4 L181.0,221.2 L206.0,222.4 L231.0,222.2 L256.0,220.1 L281.0,221.2 L306.0,222.0 L331.0,222.0 L356.0,224.7 L381.0,224.2 L406.0,223.2 L431.0,221.3 L456.0,224.2 L481.0,221.6 L506.0,220.6 L531.0,221.1 L556.0,221.4 L581.0,223.8 L606.0,222.4 L631.0,221.8 L656.0,224.3" fill="none" stroke="var(--series-2)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="656.0" cy="220.6" r="4" fill="var(--series-1)" class="ring"/><text x="664" y="224.6" class="end-label">Binh Duong</text><circle cx="656.0" cy="234.6" r="4" fill="var(--series-2)" class="ring"/><text x="664" y="238.6" class="end-label">Long An</text>
+    <line id="xhair" x1="0" x2="0" y1="16" y2="266"/>
+    <rect id="hit" x="56" y="16" width="600" height="250" fill="transparent"/>
+  </svg>
+  <div id="tip"></div>
+  <details><summary>Show as table</summary>
+  <table><thead><tr><th>Time</th><th>Binh Duong p95</th><th>scans</th><th>Long An p95</th><th>scans</th></tr></thead>
+  <tbody><tr><td>0:00</td><td>425 ms</td><td>27</td><td>418 ms</td><td>27</td></tr><tr><td>0:05</td><td>430 ms</td><td>33</td><td>423 ms</td><td>33</td></tr><tr><td>0:10</td><td>424 ms</td><td>33</td><td>414 ms</td><td>34</td></tr><tr><td>0:15</td><td>434 ms</td><td>34</td><td>434 ms</td><td>33</td></tr><tr><td>0:20</td><td>421 ms</td><td>34</td><td>428 ms</td><td>34</td></tr><tr><td>0:25</td><td>424 ms</td><td>33</td><td>430 ms</td><td>33</td></tr><tr><td>0:30</td><td>434 ms</td><td>33</td><td>418 ms</td><td>34</td></tr><tr><td>0:35</td><td>435 ms</td><td>34</td><td>421 ms</td><td>33</td></tr><tr><td>0:40</td><td>424 ms</td><td>33</td><td>441 ms</td><td>33</td></tr><tr><td>0:45</td><td>428 ms</td><td>34</td><td>430 ms</td><td>33</td></tr><tr><td>0:50</td><td>415 ms</td><td>33</td><td>423 ms</td><td>33</td></tr><tr><td>0:55</td><td>418 ms</td><td>33</td><td>423 ms</td><td>34</td></tr><tr><td>1:00</td><td>430 ms</td><td>34</td><td>396 ms</td><td>33</td></tr><tr><td>1:05</td><td>423 ms</td><td>32</td><td>402 ms</td><td>34</td></tr><tr><td>1:10</td><td>414 ms</td><td>34</td><td>411 ms</td><td>33</td></tr><tr><td>1:15</td><td>430 ms</td><td>33</td><td>430 ms</td><td>34</td></tr><tr><td>1:20</td><td>427 ms</td><td>33</td><td>402 ms</td><td>33</td></tr><tr><td>1:25</td><td>436 ms</td><td>34</td><td>427 ms</td><td>33</td></tr><tr><td>1:30</td><td>420 ms</td><td>33</td><td>436 ms</td><td>33</td></tr><tr><td>1:35</td><td>431 ms</td><td>33</td><td>431 ms</td><td>34</td></tr><tr><td>1:40</td><td>414 ms</td><td>34</td><td>428 ms</td><td>33</td></tr><tr><td>1:45</td><td>437 ms</td><td>33</td><td>405 ms</td><td>34</td></tr><tr><td>1:50</td><td>411 ms</td><td>34</td><td>419 ms</td><td>32</td></tr><tr><td>1:55</td><td>436 ms</td><td>33</td><td>424 ms</td><td>34</td></tr><tr><td>2:00</td><td>436 ms</td><td>6</td><td>400 ms</td><td>6</td></tr></tbody></table></details>
+</div>
+
+<h2>Checklist</h2>
+<table><thead><tr><th>Check</th><th>Target</th><th>Measured</th><th>Result</th></tr></thead>
+<tbody><tr><td>Kiosk response time · p95 (both factories)</td><td>&lt; 2 000 ms</td><td class="num">429 ms</td><td><span class="status good">✓ pass</span></td></tr><tr><td>Kiosk response time · p99</td><td>&lt; 2 000 ms</td><td class="num">440 ms</td><td><span class="status good">✓ pass</span></td></tr><tr><td>Kiosk response time · p95 Binh Duong</td><td>&lt; 2 000 ms</td><td class="num">431 ms</td><td><span class="status good">✓ pass</span></td></tr><tr><td>Kiosk response time · p95 Long An</td><td>&lt; 2 000 ms</td><td class="num">427 ms</td><td><span class="status good">✓ pass</span></td></tr><tr><td>Scans answered under 2 s</td><td>all</td><td class="num">1,600 / 1,600</td><td><span class="status good">✓ pass</span></td></tr><tr><td>Every scan returned a stored record</td><td>100 %</td><td class="num">100.00 %</td><td><span class="status good">✓ pass</span></td></tr><tr><td>BD: every scan has a stored record</td><td>true</td><td class="num">800 stored / 800 sent</td><td><span class="status good">✓ pass</span></td></tr><tr><td>BD: no duplicate records</td><td>true</td><td class="num">yes</td><td><span class="status good">✓ pass</span></td></tr><tr><td>LA: every scan has a stored record</td><td>true</td><td class="num">800 stored / 800 sent</td><td><span class="status good">✓ pass</span></td></tr><tr><td>LA: no duplicate records</td><td>true</td><td class="num">yes</td><td><span class="status good">✓ pass</span></td></tr><tr><td>Audit hash chain still valid after the load</td><td>true</td><td class="num">valid, 3,368 entries re-hashed</td><td><span class="status good">✓ pass</span></td></tr><tr><td>Gate openings == COMPLETED records</td><td>true</td><td class="num">1600 opens = 1600 records</td><td><span class="status good">✓ pass</span></td></tr><tr><td>Load generator kept the planned rate (dropped iterations)</td><td>0</td><td class="num">0</td><td><span class="status good">✓ pass</span></td></tr></tbody></table>
+<p class="note">Latency is the kiosk's own request (<code>POST /api/kiosk/scans</code>): verify QR → save record →
+call the turnstile → mark complete. Minting the QR (the phone's job) is measured separately and not counted.
+Record counts come from the database after the run, not from the load generator.</p>
+
+<h2>Run details</h2>
+<div class="card"><dl><dt>Profile</dt><dd>burst</dd><dt>Plan</dt><dd>run MW560EY1: 800 scans/factory over 120s (one every 150 ms per factory), profile=burst</dd><dt>Gate</dt><dd>http → fake turnstile (300 ms)</dd><dt>Started</dt><dd>2026-11-06 23:04:32 +07</dd><dt>Machine</dt><dd>Darwin arm64</dd></dl></div>
+<details><summary>Server-side verification log</summary><pre class="note">verify BD: stored 800 / sent 800 (unique employees 800) by status {&quot;COMPLETED&quot;:800}
+verify LA: stored 800 / sent 800 (unique employees 800) by status {&quot;COMPLETED&quot;:800}
+verify audit chain: valid=true entries=3368
+verify turnstile: gate opened 1600 times, COMPLETED records 1600</pre></details>
+</main></div>
+<script>
+(() => {
+  const D = {"bucket": 5, "nb": 25, "series": {"binh_duong": {"0": [425, 27], "1": [430, 33], "2": [424, 33], "3": [434, 34], "4": [421, 34], "5": [424, 33], "6": [434, 33], "7": [435, 34], "8": [424, 33], "9": [428, 34], "10": [415, 33], "11": [418, 33], "12": [430, 34], "13": [423, 32], "14": [414, 34], "15": [430, 33], "16": [427, 33], "17": [436, 34], "18": [420, 33], "19": [431, 33], "20": [414, 34], "21": [437, 33], "22": [411, 34], "23": [436, 33], "24": [436, 6]}, "long_an": {"0": [418, 27], "1": [423, 33], "2": [414, 34], "3": [434, 33], "4": [428, 34], "5": [430, 33], "6": [418, 34], "7": [421, 33], "8": [441, 33], "9": [430, 33], "10": [423, 33], "11": [423, 34], "12": [396, 33], "13": [402, 34], "14": [411, 33], "15": [430, 34], "16": [402, 33], "17": [427, 33], "18": [436, 33], "19": [431, 34], "20": [428, 33], "21": [405, 34], "22": [419, 32], "23": [424, 34], "24": [400, 6]}}, "labels": {"binh_duong": "Binh Duong", "long_an": "Long An"}, "geom": {"L": 56, "pw": 600, "T": 16, "ph": 250, "W": 760, "H": 300}};
+  const svg = document.querySelector('#chart svg'), hit = document.getElementById('hit');
+  const xh = document.getElementById('xhair'), tip = document.getElementById('tip'), card = document.getElementById('chart');
+  const g = D.geom, colors = {binh_duong: 'var(--series-1)', long_an: 'var(--series-2)'};
+  const fmt = (v) => v.toLocaleString() + ' ms';
+  hit.addEventListener('mousemove', (e) => {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const i = Math.max(0, Math.min(D.nb - 1, Math.round((p.x - g.L) / (g.pw / Math.max(1, D.nb - 1)))));
+    const x = g.L + g.pw * i / Math.max(1, D.nb - 1);
+    xh.setAttribute('x1', x); xh.setAttribute('x2', x); xh.style.visibility = 'visible';
+    const s = i * D.bucket;
+    let rows = '';
+    for (const k of Object.keys(D.series)) {
+      const v = D.series[k][String(i)];
+      rows += `<div class="row"><span><i style="background:${colors[k]}"></i>${D.labels[k]}</span>`
+        + `<span>${v ? fmt(v[0]) + ' · ' + v[1] + ' scans' : '–'}</span></div>`;
+    }
+    tip.innerHTML = `<b>${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} – p95</b>` + rows;
+    tip.style.display = 'block';
+    const box = card.getBoundingClientRect(), sb = svg.getBoundingClientRect();
+    const px = sb.left - box.left + (x / g.W) * sb.width;
+    tip.style.left = Math.min(px + 12, box.width - tip.offsetWidth - 8) + 'px';
+    tip.style.top = (sb.top - box.top + 24) + 'px';
+  });
+  hit.addEventListener('mouseleave', () => { tip.style.display = 'none'; xh.style.visibility = 'hidden'; });
+})();
+</script>
+</body></html>

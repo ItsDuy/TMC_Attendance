@@ -40,6 +40,10 @@ public class QrController {
         return mint(employeeId);
     }
 
+    /**
+     * DEMO TOOL: lets the administrator show any employee's QR in the kiosk simulator, standing in
+     * for that employee's phone. In production every employee fetches only their own (/me/qr).
+     */
     @GetMapping("/employees/{id}/qr")
     @PreAuthorize("hasRole('ADMIN')")
     public QrResponse employeeQr(@PathVariable UUID id) {

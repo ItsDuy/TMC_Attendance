@@ -3,6 +3,7 @@ package com.tmc.attendance.web;
 import com.tmc.attendance.domain.AttendanceRecord;
 import com.tmc.attendance.domain.AttendanceStatus;
 import com.tmc.attendance.repo.AttendanceRecordRepository;
+import com.tmc.identity.api.AccessScope;
 import com.tmc.identity.api.EmployeeLookup;
 import com.tmc.identity.api.EmployeeView;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,20 @@ public class AttendanceQueryService {
     public List<AttendanceRecordView> search(Instant from, Instant to, UUID employeeId, UUID factoryId) {
         Map<UUID, EmployeeView> directory = directory(employeeId, factoryId);
         return records.search(from, to, employeeId, factoryId).stream()
+                .map(record -> AttendanceRecordView.from(record, directory.get(record.getEmployeeId())))
+                .toList();
+    }
+
+    /** Same as {@link #search} but only for employees the viewer may see (e.g. a supervisor's team). */
+    @Transactional(readOnly = true)
+    public List<AttendanceRecordView> search(Instant from, Instant to, UUID employeeId, UUID factoryId,
+                                             AccessScope scope) {
+        if (scope.isEveryone()) {
+            return search(from, to, employeeId, factoryId);
+        }
+        Map<UUID, EmployeeView> directory = directory(employeeId, factoryId);
+        return records.search(from, to, employeeId, factoryId).stream()
+                .filter(record -> scope.allows(directory.get(record.getEmployeeId())))
                 .map(record -> AttendanceRecordView.from(record, directory.get(record.getEmployeeId())))
                 .toList();
     }
@@ -63,7 +78,8 @@ public class AttendanceQueryService {
             String status,
             String gateOutcome,
             String source,
-            String reason
+            String reason,
+            String enteredBy
     ) {
         static AttendanceRecordView from(AttendanceRecord record, EmployeeView employee) {
             return new AttendanceRecordView(
@@ -80,7 +96,8 @@ public class AttendanceQueryService {
                     record.getStatus().name(),
                     record.getGateOutcome(),
                     record.getSource().name(),
-                    record.getReason());
+                    record.getReason(),
+                    record.getEnteredBy());
         }
     }
 }
