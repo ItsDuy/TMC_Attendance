@@ -5,7 +5,7 @@ factories). This repository is the M2 implementation of the architecture describ
 report: a modular monolith with an internal event-driven core, edge kiosk buffering, dynamic QR
 credentials and a tamper-evident audit trail.
 
-![Kiosk simulator](docs/screenshots/kiosk-simulator.png)
+![Kiosk simulator: a 60-second dynamic QR code is shown, scanned at the gate, and the record is stored before the gate opens](docs/screenshots/kiosk-simulator.png)
 
 ## What it demonstrates
 
